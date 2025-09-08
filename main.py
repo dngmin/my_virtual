@@ -32,12 +32,23 @@ def mouse_is_opened(landmarks, mouse_indices):
     
     height = math.sqrt(pow(abs(top.x - bottom.x), 2) + pow(abs(top.y - bottom.y), 2))
     width = math.sqrt(pow(abs(left.x - right.x), 2) + pow(abs(left.y - right.y), 2))
-    if height > width/2:
-        return True
+    # standard
+    # h > w/4 = Open
+    # h > w/2 = ㅇ
+    # h > w = 0
+    if height > width/4:
+        if height > width:
+            return True, '0'
+        elif height > width/2:
+            return True, 'O'
+        else:
+            return True, 'half open'
     else:
-        return False
+        return False,False
 
 cap = cv2.VideoCapture(0)
+img = np.zeros((480,640,3),dtype=np.uint8)
+
 
 #landmark index in mediapipe
 landmark_idx = {
@@ -66,8 +77,10 @@ while cap.isOpened():
             cv2.putText(frame,f"Left Eye: {'Closed' if left_eye_closed else 'Open'}",(30,30),cv2.FONT_HERSHEY_SIMPLEX,0.7,(0,255,0) if not left_eye_closed else (0,0,255),2)
             cv2.putText(frame,f"Right Eye: {'Closed' if right_eye_closed else 'Open'}",(30,60),cv2.FONT_HERSHEY_SIMPLEX,0.7,(0,255,0) if not right_eye_closed else (0,0,255),2)
 
-            mouse_opened = mouse_is_opened(face_landmarks,landmark_idx['Mouse'])
+            mouse_opened, mouse_shape = mouse_is_opened(face_landmarks,landmark_idx['Mouse'])
             cv2.putText(frame,f"Mouse : {'Open' if mouse_opened else 'Closed'}",(30,90),cv2.FONT_HERSHEY_SIMPLEX,0.7,(0,255,0) if not mouse_opened else (0,0,255),2)
+            if mouse_opened:
+                cv2.putText(frame,f"Mouse shape : {'0' if mouse_shape == '0' else 'O' if mouse_shape == 'O' else 'half open'}",(30,120),cv2.FONT_HERSHEY_SIMPLEX,0.7,(0,255,0),2)
 
             '''
             mp_drawing.draw_landmarks(
@@ -84,8 +97,39 @@ while cap.isOpened():
                     x = int(point.x * width)
                     y = int(point.y * height)
                     cv2.circle(frame,(x,y),5,(0,0,255),-1)
+    
+
+        # virtual
+        #face
+        cv2.circle(img,(320,240),200,(150,180,240),-1)
+
+        #eyes
+        #left
+        if left_eye_closed:
+            cv2.line(img,(170,180),(270,180),(0,0,0),3,cv2.LINE_AA)
+        else:
+            cv2.circle(img,(220,180),50,(255,255,255),-1)
+            cv2.circle(img,(220,180),10,(0,0,0),-1)
+        #right
+        if right_eye_closed:
+            cv2.line(img,(370,180),(470,180),(0,0,0),3,cv2.LINE_AA)
+        else:
+            cv2.circle(img,(420,180),50,(255,255,255),-1)
+            cv2.circle(img,(420,180),10,(0,0,0),-1)
+        
+        #mouse
+        if not mouse_shape:
+            cv2.line(img,(260,320),(380,320),(20,80,255),3,cv2.LINE_AA)
+        elif mouse_shape == 'half open':
+            cv2.ellipse(img,(320,320),(60,30),0,0,360,(20,80,255),-1)
+        elif mouse_shape == 'O':
+            cv2.circle(img,(320,320),60,(20,80,255),-1)
+        elif mouse_shape == '0':
+            cv2.ellipse(img,(320,320),(30,60),0,0,360,(20,80,255),-1)
+
 
     cv2.imshow('frame',frame)
+    cv2.imshow('virtual',img)
 
     if cv2.waitKey(1) == ord('q'):
         break
